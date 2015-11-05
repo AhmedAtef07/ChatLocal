@@ -1,22 +1,34 @@
 package logic;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Vector;
 
-public class ChatServer {
+public class ChatServer extends Thread {
   private Vector<ConnectedClient> clients;
+  private ServerSocket server;
 
-  public ChatServer(int port) throws Exception {
+  public ChatServer(int port) throws IOException {
     clients = new Vector<>();
-    ServerSocket server = new ServerSocket(port);
-    while(true) {
-      Socket clientSocket = server.accept();
-      ConnectedClient c = new ConnectedClient(clientSocket);
-      clients.add(c);
+    server = new ServerSocket(port);
+
+    // Start waiting for clients to connect on detached thread;
+    start();
+  }
+
+  @Override
+  public void run() {
+    try {
+      while(true) {
+        Socket clientSocket = server.accept();
+        ConnectedClient c = new ConnectedClient(clientSocket);
+        clients.add(c);
+      }
+    } catch(Exception ex) {
     }
   }
 
@@ -40,7 +52,7 @@ public class ChatServer {
     private PrintWriter outputBuffer;
     private Socket clientSocket;
 
-    public ConnectedClient(Socket clientSocket) throws Exception {
+    public ConnectedClient(Socket clientSocket) throws IOException {
       this.clientSocket = clientSocket;
       this.inputBuffer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
       this.outputBuffer = new PrintWriter(clientSocket.getOutputStream(), true);

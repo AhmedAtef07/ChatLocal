@@ -8,17 +8,18 @@ import java.net.Socket;
 
 public class ChatClient {
   private String username;
-  private PrintWriter serverOutBuffer;
-  private BufferedReader serverInBuffer;
-  private BufferedReader clientInBuffer;
+  private PrintWriter serverOutputBuffer;
+  private BufferedReader serverInputBuffer;
   private Socket serverSocket;
+  private GUIController guiController;
 
-  public ChatClient(String username, int port) throws IOException {
+  public ChatClient(GUIController guiController, String username, int port) throws IOException {
     this.username = username;
     this.serverSocket = new Socket("localhost", port);
+    this.guiController = guiController;
 
-    serverInBuffer = new BufferedReader(new InputStreamReader(serverSocket.getInputStream()));
-    serverOutBuffer = new PrintWriter(serverSocket.getOutputStream(), true);
+    serverInputBuffer = new BufferedReader(new InputStreamReader(serverSocket.getInputStream()));
+    serverOutputBuffer = new PrintWriter(serverSocket.getOutputStream(), true);
 
     sendToServer(username);
 
@@ -34,21 +35,21 @@ public class ChatClient {
   }
 
   public void sendToServer(String message) {
-    serverOutBuffer.println(message);
+    serverOutputBuffer.println(message);
   }
 
   private void receivedFromServer(String message) {
-    //TODO: Send data to GUIHandler when it is implemented;
+    guiController.appendMessage(message);
   }
 
   class IncomingMessages extends Thread {
     @Override
     public void run() {
       try {
-        while (true) {
-          receivedFromServer(serverInBuffer.readLine());
+        while(true) {
+          receivedFromServer(serverInputBuffer.readLine());
         }
-      } catch (Exception ex) {
+      } catch(Exception ex) {
       }
     }
   }
