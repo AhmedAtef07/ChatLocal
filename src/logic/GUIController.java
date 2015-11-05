@@ -13,10 +13,8 @@ import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
 
-import java.io.IOException;
-
 public class GUIController {
-  private Stage pr;
+  private Stage stage;
   private ChatServer server;
   private ChatClient client;
 
@@ -27,17 +25,19 @@ public class GUIController {
   }
 
   private void startGUI(Stage primaryStage) {
-    pr = primaryStage;
+    stage = primaryStage;
     GridPane startGrid = getStartScreen();
     Scene scene = new Scene(startGrid, 800, 500);
     primaryStage.setScene(scene);
 
     //    primaryStage.setMaximized(true);
-    primaryStage.centerOnScreen();
-    primaryStage.setTitle("Chat Room");
-    primaryStage.show();
+    stage.centerOnScreen();
+    stage.setTitle("Chat Room");
+    stage.setMaxHeight(800);
+    stage.setMaxWidth(500);
+    stage.show();
     FlatterFX.style();
-    startGrid.requestFocus();
+    stage.requestFocus();
   }
 
   private GridPane getStartScreen() {
@@ -87,8 +87,8 @@ public class GUIController {
         server = new ChatServer(port);
         client = new ChatClient("localhost", this, username, port);
         goToChat();
-      } catch(IOException e) {
-        e.printStackTrace();
+      } catch(Exception ex) {
+        ex.printStackTrace();
       }
     });
 
@@ -100,8 +100,8 @@ public class GUIController {
         String serverIP = ipAddressField.getText();
         client = new ChatClient(serverIP, this, username, port);
         goToChat();
-      } catch(IOException e) {
-        e.printStackTrace();
+      } catch(Exception ex) {
+        ex.printStackTrace();
       }
       goToChat();
     });
@@ -124,7 +124,11 @@ public class GUIController {
     Button sendButton = new Button("Send");
 
     sendButton.setOnAction((ActionEvent event) -> {
-      client.sendToServer(messageField.getText());
+      try {
+        client.sendToServer(messageField.getText());
+      } catch(Exception ex) {
+        ex.printStackTrace();
+      }
       messageField.setText("");
     });
 
@@ -145,7 +149,10 @@ public class GUIController {
   private void goToChat() {
     GridPane chatGrid = getChatScreen();
     Scene scene = new Scene(chatGrid);
-    pr.setScene(scene);
+    stage.setScene(scene);
+    stage.centerOnScreen();
+    stage.setMaxHeight(800);
+    stage.setMaxWidth(500);
     chatGrid.requestFocus();
   }
 
