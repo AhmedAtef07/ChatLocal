@@ -54,6 +54,13 @@ public class GUIController {
     portLabel.setAlignment(Pos.CENTER);
     TextField portField = new TextField("7090");
 
+    Label ipAddressLabel = new Label("IP Address");
+    GridPane.setHalignment(ipAddressLabel, HPos.CENTER);
+    GridPane.setValignment(ipAddressLabel, VPos.CENTER);
+    ipAddressLabel.setAlignment(Pos.CENTER);
+    TextField ipAddressField = new TextField("192.168.1.");
+
+
     Label usernameLabel = new Label("User Name");
     GridPane.setHalignment(usernameLabel, HPos.CENTER);
     GridPane.setValignment(usernameLabel, VPos.CENTER);
@@ -65,10 +72,12 @@ public class GUIController {
 
     grid.add(portLabel, 0, 0, 4, 1);
     grid.add(portField, 0, 1, 4, 1);
-    grid.add(usernameLabel, 0, 2, 4, 1);
-    grid.add(usernameField, 0, 3, 4, 1);
-    grid.add(createButton, 0, 4, 2, 1);
-    grid.add(joinButton, 2, 4, 2, 1);
+    grid.add(ipAddressLabel, 0, 2, 4, 1);
+    grid.add(ipAddressField, 0, 3, 4, 1);
+    grid.add(usernameLabel, 0, 4, 4, 1);
+    grid.add(usernameField, 0, 5, 4, 1);
+    grid.add(createButton, 0, 6, 2, 1);
+    grid.add(joinButton, 2, 6, 2, 1);
 
     createButton.setOnAction((ActionEvent event) -> {
       // Create Server
@@ -76,7 +85,7 @@ public class GUIController {
         int port = Integer.parseInt(portField.getText());
         String username = usernameField.getText();
         server = new ChatServer(port);
-        client = new ChatClient(this, username, port);
+        client = new ChatClient("localhost", this, username, port);
         goToChat();
       } catch(IOException e) {
         e.printStackTrace();
@@ -88,7 +97,8 @@ public class GUIController {
       try {
         int port = Integer.parseInt(portField.getText());
         String username = usernameField.getText();
-        client = new ChatClient(this, username, port);
+        String serverIP = ipAddressField.getText();
+        client = new ChatClient(serverIP, this, username, port);
         goToChat();
       } catch(IOException e) {
         e.printStackTrace();
