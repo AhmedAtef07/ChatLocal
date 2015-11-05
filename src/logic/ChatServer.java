@@ -32,7 +32,7 @@ public class ChatServer extends Thread {
     }
   }
 
-  private void broadcast(String user, String message) {
+  private void broadcast(String user, byte[] message) {
     for(ConnectedClient connectedClient : clients) {
       if(connectedClient.username.equals(user)) {
         connectedClient.sendMessage(makeMessage(user, message));
@@ -42,8 +42,9 @@ public class ChatServer extends Thread {
     }
   }
 
-  private String makeMessage(String username, String message) {
-    return String.format("%s: %s", username, message);
+  private String makeMessage(String username, byte[] message) {
+    String data = DataConversion.bytesToString(message);
+    return String.format("%s: %s", username, data);
   }
 
   private class ConnectedClient extends Thread {
@@ -69,8 +70,9 @@ public class ChatServer extends Thread {
       outputBuffer.flush();
     }
 
-    private void messageReceived(String message) {
-      if(message.equals("terminateme")) {
+    private void messageReceived(byte[] message) {
+      String data = DataConversion.bytesToString(message);
+      if (data.equals("terminateme")) {
         clients.remove(this);
         return;
       }
@@ -81,10 +83,13 @@ public class ChatServer extends Thread {
     public void run() {
       try {
         while(true) {
-          messageReceived(inputBuffer.readLine());
+          String data = inputBuffer.readLine();
+          byte[] message = DataConversion.bytesFromString(data);
+          messageReceived(message);
         }
       } catch(Exception ex) {
       }
     }
   }
+
 }

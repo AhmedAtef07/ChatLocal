@@ -30,7 +30,9 @@ public class ChatClient {
     sendToServer(username);
 
     new IncomingMessages().start();
-    receivedFromServer("This IP: " + getCurrentEnvironmentNetworkIp());
+    String ipAddress = "This IP: " + getCurrentEnvironmentNetworkIp();
+    byte[] data = DataConversion.bytesFromString(ipAddress);
+    receivedFromServer(data);
 
     // Inform the server of user disconnection.
     Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -72,9 +74,10 @@ public class ChatClient {
     serverOutputBuffer.println(message);
   }
 
-  private void receivedFromServer(String message) {
+  private void receivedFromServer(byte[] message) {
     Platform.runLater(() -> {
-      guiController.appendMessage(message);
+      String data = DataConversion.bytesToString(message);
+      guiController.appendMessage(data);
     });
   }
 
@@ -83,10 +86,13 @@ public class ChatClient {
     public void run() {
       try {
         while(true) {
-          receivedFromServer(serverInputBuffer.readLine());
+          String data = serverInputBuffer.readLine();
+          byte[] message = DataConversion.bytesFromString(data);
+          receivedFromServer(message);
         }
       } catch(Exception ex) {
       }
     }
   }
+
 }
