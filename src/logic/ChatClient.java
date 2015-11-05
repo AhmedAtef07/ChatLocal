@@ -1,5 +1,7 @@
 package logic;
 
+import javafx.application.Platform;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -39,7 +41,9 @@ public class ChatClient {
   }
 
   private void receivedFromServer(String message) {
-    guiController.appendMessage(message);
+    Platform.runLater(() -> {
+      guiController.appendMessage(message);
+    });
   }
 
   class IncomingMessages extends Thread {
