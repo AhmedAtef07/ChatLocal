@@ -1,8 +1,5 @@
 package logic;
 
-/**
- * Created by ahmadbarakat on 309 / 5 / 15.
- */
 public abstract class DataConversion {
 
   public static String bytesToString(byte[] data) {

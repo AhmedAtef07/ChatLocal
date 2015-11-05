@@ -2,10 +2,8 @@ package logic;
 
 import javafx.application.Platform;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.Socket;
@@ -13,19 +11,23 @@ import java.net.SocketException;
 import java.util.Enumeration;
 
 public class ChatClient {
+
+  protected byte[] sendData = new byte[1024];
+  protected byte[] receiveData = new byte[1024];
+  private DataInputStream inputStream;
+  private DataOutputStream outputStream;
   private String username;
-  private PrintWriter serverOutputBuffer;
-  private BufferedReader serverInputBuffer;
   private Socket serverSocket;
   private GUIController guiController;
 
-  public ChatClient(String serverIP, GUIController guiController, String username, int port) throws IOException {
+  public ChatClient(String serverIP, GUIController guiController, String username, int port)
+          throws Exception {
     this.username = username;
     this.serverSocket = new Socket(serverIP, port);
     this.guiController = guiController;
 
-    serverInputBuffer = new BufferedReader(new InputStreamReader(serverSocket.getInputStream()));
-    serverOutputBuffer = new PrintWriter(serverSocket.getOutputStream(), true);
+    inputStream = new DataInputStream(serverSocket.getInputStream());
+    outputStream = new DataOutputStream(serverSocket.getOutputStream());
 
     sendToServer(username);
 
@@ -38,7 +40,11 @@ public class ChatClient {
     Runtime.getRuntime().addShutdownHook(new Thread() {
       @Override
       public void run() {
-        sendToServer("terminateme");
+        try {
+          sendToServer("terminateme");
+        } catch(Exception ex) {
+          ex.printStackTrace();
+        }
       }
     });
   }
@@ -70,8 +76,9 @@ public class ChatClient {
     return currentHostIpAddress;
   }
 
-  public void sendToServer(String message) {
-    serverOutputBuffer.println(message);
+  public void sendToServer(String message) throws Exception {
+    sendData = DataConversion.bytesFromString(message);
+    StreamsTraffic.writeMessage(outputStream, sendData, sendData.length);
   }
 
   private void receivedFromServer(byte[] message) {
@@ -86,9 +93,8 @@ public class ChatClient {
     public void run() {
       try {
         while(true) {
-          String data = serverInputBuffer.readLine();
-          byte[] message = DataConversion.bytesFromString(data);
-          receivedFromServer(message);
+          receiveData = StreamsTraffic.readMessage(inputStream);
+          receivedFromServer(receiveData);
         }
       } catch(Exception ex) {
       }
