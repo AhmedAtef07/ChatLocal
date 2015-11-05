@@ -1,102 +1,78 @@
 package logic;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Vector;
 
-import static java.lang.System.out;
-
 public class ChatServer {
-  Vector<String> usernames = new Vector<String>();
-  Vector<ConnectedClient> clients = new Vector<ConnectedClient>();
-  PrintWriter logger;
+  private Vector<ConnectedClient> clients;
 
   public ChatServer(int port) throws Exception {
-    ServerSocket server = new ServerSocket(port, 10);
-    logger = initLogger();
-    out.println("Server Started...");
-    while (true) {
+    clients = new Vector<>();
+    ServerSocket server = new ServerSocket(port);
+    while(true) {
       Socket clientSocket = server.accept();
       ConnectedClient c = new ConnectedClient(clientSocket);
       clients.add(c);
     }
   }
 
-  private PrintWriter initLogger() throws FileNotFoundException {
-    File logFile = new File("server_log_" + System.currentTimeMillis());
-    return new PrintWriter(logFile);
-  }
-
-  public void broadcast(String user, String message) {
-    for (ConnectedClient c : clients) {
-      if (c.getUsername().equals(user)) {
-        // c.sendMessage("Server", "[" + message + "] was sent.");
-        c.sendMessage(user, message);
+  private void broadcast(String user, String message) {
+    for(ConnectedClient connectedClient : clients) {
+      if(connectedClient.username.equals(user)) {
+        connectedClient.sendMessage(makeMessage(user, message));
       } else {
-        c.sendMessage(user, message);
+        connectedClient.sendMessage(makeMessage(user, message));
       }
     }
   }
 
-  class ConnectedClient extends Thread {
+  private String makeMessage(String username, String message) {
+    return String.format("%s: %s", username, message);
+  }
+
+  private class ConnectedClient extends Thread {
     private String username;
-    private BufferedReader input;
-    private PrintWriter output;
+    private BufferedReader inputBuffer;
+    private PrintWriter outputBuffer;
     private Socket clientSocket;
 
     public ConnectedClient(Socket clientSocket) throws Exception {
       this.clientSocket = clientSocket;
-      this.input = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-      this.output = new PrintWriter(clientSocket.getOutputStream(), true);
+      this.inputBuffer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+      this.outputBuffer = new PrintWriter(clientSocket.getOutputStream(), true);
 
-      this.username = input.readLine();
-      log("---User Connected---");
+      // This is the first thing agreed with the client to send.
+      this.username = inputBuffer.readLine();
 
-      usernames.add(this.username);
+      // Listen to any incoming messages on an external
       start();
     }
 
-    public void sendMessage(String username, String msg) {
-      // output.println("\u001B[32m" + username + ": " + msg + "\u001B[0m");
-      output.println(username + ": " + msg);
-      output.flush();
+    private void sendMessage(String message) {
+      outputBuffer.println(message);
+      outputBuffer.flush();
     }
 
-    public String getUsername() {
-      return username;
-    }
-
-    private void log(String line) {
-      String raw = String.format("%d:%s:%s:%s", System.currentTimeMillis(),
-              clientSocket.getRemoteSocketAddress(), username, line);
-
-      out.println(raw);
-      out.flush();
-
-      logger.println(raw);
-      logger.flush();
+    private void messageReceived(String message) {
+      if(message.equals("terminateme")) {
+        clients.remove(this);
+        return;
+      }
+      broadcast(username, message);
     }
 
     @Override
     public void run() {
       try {
-        while (true) {
-          String line = input.readLine();
-          log(line);
-
-          if (line.equals("terminateme")) {
-            clients.remove(this);
-            usernames.remove(username);
-            break;
-          }
-
-          broadcast(username, line);
+        while(true) {
+          messageReceived(inputBuffer.readLine());
         }
-      } catch (Exception ex) {
-        System.out.println(ex.getMessage());
+      } catch(Exception ex) {
       }
     }
   }
-
 }
