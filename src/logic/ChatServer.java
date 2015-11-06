@@ -1,14 +1,14 @@
 package logic;
 
-import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Vector;
 
 public class ChatServer extends Thread {
+
   private Vector<ConnectedClient> clients;
   private ServerSocket server;
 
@@ -32,7 +32,7 @@ public class ChatServer extends Thread {
     }
   }
 
-  private void broadcast(String user, String message) {
+  private void broadcast(String user, byte[] message) throws IOException {
     for(ConnectedClient connectedClient : clients) {
       if(connectedClient.username.equals(user)) {
         connectedClient.sendMessage(makeMessage(user, message));
@@ -42,35 +42,41 @@ public class ChatServer extends Thread {
     }
   }
 
-  private String makeMessage(String username, String message) {
-    return String.format("%s: %s", username, message);
+  private String makeMessage(String username, byte[] message) {
+    String data = DataConversion.bytesToString(message);
+    return String.format("%s: %s", username, data);
   }
 
   private class ConnectedClient extends Thread {
     private String username;
-    private BufferedReader inputBuffer;
-    private PrintWriter outputBuffer;
     private Socket clientSocket;
+
+    private DataInputStream inputStream;
+    private DataOutputStream outputStream;
+    private byte[] sendData = new byte[1024];
+    private byte[] receiveData = new byte[1024];
 
     public ConnectedClient(Socket clientSocket) throws IOException {
       this.clientSocket = clientSocket;
-      this.inputBuffer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-      this.outputBuffer = new PrintWriter(clientSocket.getOutputStream(), true);
+      this.inputStream = new DataInputStream(clientSocket.getInputStream());
+      this.outputStream = new DataOutputStream(clientSocket.getOutputStream());
 
       // This is the first thing agreed with the client to send.
-      this.username = inputBuffer.readLine();
+      receiveData = StreamsTraffic.readMessage(inputStream);
+      this.username = DataConversion.bytesToString(receiveData);
 
       // Listen to any incoming messages on an external
       start();
     }
 
-    private void sendMessage(String message) {
-      outputBuffer.println(message);
-      outputBuffer.flush();
+    private void sendMessage(String message) throws IOException {
+      sendData = DataConversion.bytesFromString(message);
+      StreamsTraffic.writeMessage(outputStream, sendData, sendData.length);
     }
 
-    private void messageReceived(String message) {
-      if(message.equals("terminateme")) {
+    private void messageReceived(byte[] message) throws IOException {
+      String data = DataConversion.bytesToString(message);
+      if(data.equals("terminateme")) {
         clients.remove(this);
         return;
       }
@@ -81,10 +87,12 @@ public class ChatServer extends Thread {
     public void run() {
       try {
         while(true) {
-          messageReceived(inputBuffer.readLine());
+          receiveData = StreamsTraffic.readMessage(inputStream);
+          messageReceived(receiveData);
         }
       } catch(Exception ex) {
       }
     }
   }
+
 }
