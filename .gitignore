@@ -38,3 +38,6 @@
 
 # JIRA plugin
 atlassian-ide-plugin.xml
+
+#Ignore Manifest directory
+/src/META-INF
