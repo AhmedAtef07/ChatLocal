@@ -52,6 +52,7 @@ public class NetworkMessage {
     byteBuffer.put(data);
 
     raw = byteBuffer.array();
+    this.length = length;
   }
 
   private void decode(byte[] raw) {
@@ -114,7 +115,8 @@ public class NetworkMessage {
       dataOutputStream.write(raw, 0, length);
       dataOutputStream.flush();
       return true;
-    } catch(IOException e) {
+    } catch(IOException ex) {
+      ex.printStackTrace();
       return false;
     }
   }

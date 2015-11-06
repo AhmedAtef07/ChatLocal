@@ -77,8 +77,8 @@ public class ChatServer extends Thread {
           clients.remove(this);
           return;
         }
-        broadcast(username, newMessage.getContent().toString());
       }
+      broadcast(username, newMessage.getContent().toString());
     }
 
     @Override
