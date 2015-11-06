@@ -32,63 +32,60 @@ public class ChatServer extends Thread {
     }
   }
 
-  private void broadcast(String user, byte[] message) throws IOException {
+  private void broadcast(String user, String textMessage) throws IOException {
     for(ConnectedClient connectedClient : clients) {
       if(connectedClient.username.equals(user)) {
-        connectedClient.sendMessage(makeMessage(user, message));
+        connectedClient.sendMessage(makeMessage(user, textMessage));
       } else {
-        connectedClient.sendMessage(makeMessage(user, message));
+        connectedClient.sendMessage(makeMessage(user, textMessage));
       }
     }
   }
 
-  private String makeMessage(String username, byte[] message) {
-    String data = DataConversion.bytesToString(message);
-    return String.format("%s: %s", username, data);
+  private String makeMessage(String username, String textMessage) {
+    return String.format("%s: %s", username, textMessage);
   }
 
   private class ConnectedClient extends Thread {
     private String username;
     private Socket clientSocket;
 
-    private DataInputStream inputStream;
-    private DataOutputStream outputStream;
-    private byte[] sendData = new byte[1024];
-    private byte[] receiveData = new byte[1024];
+    private DataInputStream dataInputStream;
+    private DataOutputStream dataOutputStream;
 
     public ConnectedClient(Socket clientSocket) throws IOException {
       this.clientSocket = clientSocket;
-      this.inputStream = new DataInputStream(clientSocket.getInputStream());
-      this.outputStream = new DataOutputStream(clientSocket.getOutputStream());
+      this.dataInputStream = new DataInputStream(clientSocket.getInputStream());
+      this.dataOutputStream = new DataOutputStream(clientSocket.getOutputStream());
 
       // This is the first thing agreed with the client to send.
-      receiveData = StreamsTraffic.readMessage(inputStream);
-      this.username = DataConversion.bytesToString(receiveData);
+      NetworkMessage usernameMessage = new NetworkMessage(dataInputStream);
+      this.username = usernameMessage.getContent().toString();
 
       // Listen to any incoming messages on an external
       start();
     }
 
     private void sendMessage(String message) throws IOException {
-      sendData = DataConversion.bytesFromString(message);
-      StreamsTraffic.writeMessage(outputStream, sendData, sendData.length);
+      NetworkMessage textMessage = new NetworkMessage(MessageType.TEXT, message);
+      textMessage.send(dataOutputStream);
     }
 
-    private void messageReceived(byte[] message) throws IOException {
-      String data = DataConversion.bytesToString(message);
-      if(data.equals("terminateme")) {
-        clients.remove(this);
-        return;
+    private void messageReceived(NetworkMessage newMessage) throws IOException {
+      if(newMessage.getType().equals(MessageType.SIGNAL)) {
+        if(((Signal) newMessage.getContent()).equals(Signal.USER_DISCONNECTED)) {
+          clients.remove(this);
+          return;
+        }
+        broadcast(username, newMessage.getContent().toString());
       }
-      broadcast(username, message);
     }
 
     @Override
     public void run() {
       try {
         while(true) {
-          receiveData = StreamsTraffic.readMessage(inputStream);
-          messageReceived(receiveData);
+          messageReceived(new NetworkMessage(dataInputStream));
         }
       } catch(Exception ex) {
       }

@@ -1,6 +1,9 @@
 package logic;
 
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
@@ -8,17 +11,22 @@ import java.nio.ByteBuffer;
  */
 public class NetworkMessage {
   private short length;
-  private MessageType messageType;
+  private MessageType type;
   private Object content;
   private byte[] raw;
 
-  public NetworkMessage(MessageType messageType, Object content) {
-    encode(messageType, content);
+  public NetworkMessage(MessageType type, Object content) {
+    encode(type, content);
   }
 
   public NetworkMessage(byte[] raw) {
     this.raw = raw;
     decode(raw);
+  }
+
+  public NetworkMessage(DataInputStream dataInputStream) throws IOException {
+    read(dataInputStream);
+    encode(type, content);
   }
 
   private void encode(MessageType messageType, Object object) {
@@ -48,7 +56,6 @@ public class NetworkMessage {
 
   private void decode(byte[] raw) {
     short length = ByteBuffer.wrap(raw, 0, 2).getShort();
-    //TODO: Check if value is in bounds of Type[].
     MessageType messageType = MessageType.getMessageType(ByteBuffer.wrap(raw, 2, 2).getShort());
 
     if(messageType.getTypeClass().equals(String.class)) {
@@ -61,9 +68,28 @@ public class NetworkMessage {
     }
   }
 
-  private void setLocalVariables(short length, MessageType messageType, Object content) {
+  private void read(DataInputStream dataInputStream) throws IOException {
+    byte[] msg = new byte[length];
+    dataInputStream.readFully(msg);
+
+    short length = dataInputStream.readShort();
+    MessageType messageType = MessageType.getMessageType(dataInputStream.readShort());
+    byte[] byteContent = new byte[length - 4];
+    dataInputStream.readFully(byteContent);
+
+    if(messageType.getTypeClass().equals(String.class)) {
+      String content = new String(byteContent);
+      setLocalVariables(length, messageType, content);
+    }
+    if(messageType.getTypeClass().equals(Signal.class)) {
+      Signal signal = Signal.getSignal(ByteBuffer.wrap(byteContent).getShort());
+      setLocalVariables(length, messageType, signal);
+    }
+  }
+
+  private void setLocalVariables(short length, MessageType type, Object content) {
     this.length = length;
-    this.messageType = messageType;
+    this.type = type;
     this.content = content;
   }
 
@@ -71,8 +97,8 @@ public class NetworkMessage {
     return length;
   }
 
-  public MessageType getMessageType() {
-    return messageType;
+  public MessageType getType() {
+    return type;
   }
 
   public Object getContent() {
@@ -82,4 +108,16 @@ public class NetworkMessage {
   public byte[] getRaw() {
     return raw;
   }
+
+  public boolean send(DataOutputStream dataOutputStream) {
+    try {
+      dataOutputStream.write(raw, 0, length);
+      dataOutputStream.flush();
+      return true;
+    } catch(IOException e) {
+      return false;
+    }
+  }
+
+
 }

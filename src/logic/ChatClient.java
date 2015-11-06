@@ -4,6 +4,7 @@ import javafx.application.Platform;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.Socket;
@@ -12,10 +13,8 @@ import java.util.Enumeration;
 
 public class ChatClient {
 
-  protected byte[] sendData = new byte[1024];
-  protected byte[] receiveData = new byte[1024];
-  private DataInputStream inputStream;
-  private DataOutputStream outputStream;
+  private DataInputStream dataInputStream;
+  private DataOutputStream dataOutputStream;
   private String username;
   private Socket serverSocket;
   private GUIController guiController;
@@ -26,15 +25,17 @@ public class ChatClient {
     this.serverSocket = new Socket(serverIP, port);
     this.guiController = guiController;
 
-    inputStream = new DataInputStream(serverSocket.getInputStream());
-    outputStream = new DataOutputStream(serverSocket.getOutputStream());
+    dataInputStream = new DataInputStream(serverSocket.getInputStream());
+    dataOutputStream = new DataOutputStream(serverSocket.getOutputStream());
 
     sendToServer(username);
 
     new IncomingMessages().start();
+
     String ipAddress = "This IP: " + getCurrentEnvironmentNetworkIp();
-    byte[] data = DataConversion.bytesFromString(ipAddress);
-    receivedFromServer(data);
+    Platform.runLater(() -> {
+      guiController.appendMessage(ipAddress);
+    });
 
     // Inform the server of user disconnection.
     Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -77,14 +78,12 @@ public class ChatClient {
   }
 
   public void sendToServer(String message) throws Exception {
-    sendData = DataConversion.bytesFromString(message);
-    StreamsTraffic.writeMessage(outputStream, sendData, sendData.length);
+    new NetworkMessage(MessageType.TEXT, message).send(dataOutputStream);
   }
 
-  private void receivedFromServer(byte[] message) {
+  private void messageReceived(NetworkMessage newMessage) throws IOException {
     Platform.runLater(() -> {
-      String data = DataConversion.bytesToString(message);
-      guiController.appendMessage(data);
+      guiController.appendMessage(newMessage.getContent().toString());
     });
   }
 
@@ -93,8 +92,7 @@ public class ChatClient {
     public void run() {
       try {
         while(true) {
-          receiveData = StreamsTraffic.readMessage(inputStream);
-          receivedFromServer(receiveData);
+          messageReceived(new NetworkMessage(dataInputStream));
         }
       } catch(Exception ex) {
       }
